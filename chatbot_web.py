@@ -1,16 +1,16 @@
-from flask import Flask, request, render_template_string
+from flask import Flask, request, render_template_string, session
 import openai
 from dotenv import load_dotenv
 import os
 
 # Load environment variables from .env
 load_dotenv()
-
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 app = Flask(__name__)
+app.secret_key = "replace_this_with_a_random_secret_key"  # needed for sessions
 
-# HTML template for the chat page
+# HTML template
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html>
@@ -41,15 +41,16 @@ HTML_TEMPLATE = """
 </html>
 """
 
-# Store chat history in memory (resets on server restart)
-chat_history = []
-
 @app.route("/", methods=["GET", "POST"])
 def chat():
+    # Initialize session chat history
+    if "chat_history" not in session:
+        session["chat_history"] = []
+
     if request.method == "POST":
         user_message = request.form["message"]
 
-        # Call OpenAI API using the new interface
+        # Call OpenAI API
         response = openai.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
@@ -58,11 +59,11 @@ def chat():
             ]
         )
 
-        # Access bot response correctly
         bot_message = response.choices[0].message.content
-        chat_history.append({"user": user_message, "bot": bot_message})
+        session["chat_history"].append({"user": user_message, "bot": bot_message})
 
-    return render_template_string(HTML_TEMPLATE, chat_history=chat_history)
+    return render_template_string(HTML_TEMPLATE, chat_history=session.get("chat_history", []))
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5001, debug=True)
+
