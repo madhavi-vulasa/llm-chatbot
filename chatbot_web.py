@@ -49,7 +49,7 @@ def chat():
     if request.method == "POST":
         user_message = request.form["message"]
 
-        # Call OpenAI API
+        # Call OpenAI API using the new interface
         response = openai.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
@@ -58,7 +58,8 @@ def chat():
             ]
         )
 
-        bot_message = response.choices[0].message["content"]
+        # Access bot response correctly
+        bot_message = response.choices[0].message.content
         chat_history.append({"user": user_message, "bot": bot_message})
 
     return render_template_string(HTML_TEMPLATE, chat_history=chat_history)
