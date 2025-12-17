@@ -9,9 +9,8 @@ This project demonstrates LLM integration, conversation memory, and terminal-bas
 - Configurable temperature for creativity
 
 ## Setup
-1. Clone the repo
-2. Create a virtual environment
+1. Clone the repo:
    ```bash
-   python -m venv venv
-   source venv/bin/activate   # Mac/Linux
-   venv\Scripts\activate      # Windows
+   git clone git@github.com:madhavi-vulasa/llm-chatbot.git
+   cd llm-chatbot
+
