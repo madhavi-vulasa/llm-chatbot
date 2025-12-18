@@ -114,28 +114,27 @@ chat_history = []
 @app.route("/", methods=["GET", "POST"])
 def chat():
     if request.method == "POST":
-        user_message = request.form["message"]
+        user_message = request.form.get("message", "").strip()
+        if user_message:  # only process non-empty messages
+            # build messages for OpenAI
+            messages = [{"role": "system", "content": "You are ChatGPT, a helpful assistant."}]
+            for entry in chat_history:
+                messages.append({"role": "user", "content": entry["user"]})
+                messages.append({"role": "assistant", "content": entry["bot"]})
+            messages.append({"role": "user", "content": user_message})
 
-        # Build conversation context
-        messages = [
-            {"role": "system", "content": "You are ChatGPT, a helpful, concise, and creative assistant."}
-        ]
-        for entry in chat_history:
-            messages.append({"role": "user", "content": entry["user"]})
-            messages.append({"role": "assistant", "content": entry["bot"]})
-        messages.append({"role": "user", "content": user_message})
+            response = openai.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=messages,
+                temperature=0.7
+            )
+            bot_message = response.choices[0].message.content
+            chat_history.append({"user": user_message, "bot": bot_message})
 
-        # Call OpenAI API
-        response = openai.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=messages,
-            temperature=0.7
-        )
-
-        bot_message = response.choices[0].message.content
-        chat_history.append({"user": user_message, "bot": bot_message})
+        return redirect(url_for("chat"))  # redirect after POST to prevent resubmission
 
     return render_template_string(HTML_TEMPLATE, chat_history=chat_history)
+
 
 @app.route("/clear", methods=["POST"])
 def clear():
