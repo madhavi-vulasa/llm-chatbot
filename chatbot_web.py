@@ -1,8 +1,7 @@
-from flask import Flask, request, render_template_string, redirect, url_for
+from flask import Flask, request, render_template_string
 import openai
 from dotenv import load_dotenv
 import os
-import time
 
 # Load environment variables
 load_dotenv()
@@ -18,122 +17,94 @@ HTML_TEMPLATE = """
     <title>LLM Chatbot</title>
     <style>
         body {
-            margin: 0;
             font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
             background: url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1470&q=80') no-repeat center center fixed;
             background-size: cover;
         }
-        .container {
-            max-width: 700px;
-            margin: 0 auto;
-            background-color: rgba(255, 255, 255, 0.9);
-            border-radius: 15px;
-            box-shadow: 0px 0px 20px rgba(0,0,0,0.2);
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            height: 90vh;
-        }
-        .header {
-            background-color: #007BFF;
+        header {
+            background-color: rgba(0,0,0,0.6);
             color: white;
             padding: 15px;
-            border-top-left-radius: 15px;
-            border-top-right-radius: 15px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .header h2 {
-            margin: 0;
-            font-size: 1.5em;
-        }
-        .chatbox {
-            flex: 1;
-            padding: 15px;
-            overflow-y: auto;
-            background-color: #f9f9f9;
-        }
-        .user {
-            background-color: #007BFF;
-            color: white;
-            padding: 8px 12px;
-            border-radius: 20px;
-            display: inline-block;
-            margin: 5px 0;
-        }
-        .bot {
-            background-color: #e2e2e2;
-            color: black;
-            padding: 8px 12px;
-            border-radius: 20px;
-            display: inline-block;
-            margin: 5px 0;
+            text-align: center;
+            font-size: 24px;
         }
         form {
+            margin: 20px;
             display: flex;
-            padding: 15px;
-            gap: 10px;
-            border-top: 1px solid #ccc;
+            justify-content: center;
         }
         input[type=text] {
-            flex: 1;
+            width: 70%;
             padding: 10px;
-            border-radius: 20px;
-            border: 1px solid #ccc;
+            border-radius: 5px;
+            border: none;
         }
         input[type=submit], button {
+            padding: 10px 15px;
+            margin-left: 10px;
+            border-radius: 5px;
             border: none;
-            padding: 10px 20px;
-            border-radius: 20px;
+            background-color: #4CAF50;
+            color: white;
             cursor: pointer;
         }
-        input[type=submit] { background-color: #28a745; color: white; }
-        button { background-color: #dc3545; color: white; }
-        .typing { font-style: italic; color: #555; margin: 5px 0; }
-        @media screen and (max-width: 768px) {
-            .container { width: 95%; height: 90vh; }
-            input[type=text] { padding: 8px; }
+        .chatbox {
+            margin: 20px auto;
+            width: 80%;
+            max-width: 800px;
+            background-color: rgba(255,255,255,0.85);
+            padding: 20px;
+            border-radius: 10px;
+            height: 500px;
+            overflow-y: auto;
+        }
+        .message {
+            padding: 10px;
+            margin: 8px 0;
+            border-radius: 8px;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+        .user-message {
+            background-color: #d0ebff; /* light blue */
+            text-align: left;
+            margin-left: 0;
+        }
+        .bot-message {
+            background-color: #d3f9d8; /* light green */
+            text-align: left;
+            margin-left: 20px; /* indent bot messages */
         }
     </style>
+    <script>
+        function clearChat() {
+            fetch('/clear', {method: 'POST'}).then(() => { location.reload(); });
+        }
+        window.onload = function() {
+            var chatbox = document.querySelector('.chatbox');
+            chatbox.scrollTop = chatbox.scrollHeight; // scroll to bottom
+        };
+    </script>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h2>LLM Chatbot</h2>
-            <form method="post" action="/clear">
-                <button type="submit">Clear Chat</button>
-            </form>
-        </div>
-        <div class="chatbox" id="chatbox">
-            {% for entry in chat_history %}
-                <div class="user"><b>You:</b> {{ entry.user }}</div>
-                <div class="bot"><b>Bot:</b> {{ entry.bot }}</div>
-            {% endfor %}
-        </div>
-        <form method="post" id="chatForm">
-            <input type="text" name="message" placeholder="Type your message" required autofocus>
-            <input type="submit" value="Send">
-        </form>
-        <div class="typing" id="typingIndicator" style="display:none;">Bot is typing...</div>
+    <header>🌿 LLM Chatbot</header>
+    <form method="post">
+        <input type="text" name="message" placeholder="Type your message" required>
+        <input type="submit" value="Send">
+        <button type="button" onclick="clearChat()">Clear Chat</button>
+    </form>
+    <div class="chatbox">
+        {% for entry in chat_history %}
+            <div class="message user-message">
+                <b>You:</b> {{ entry.user }}
+            </div>
+            <div class="message bot-message">
+                <b>Bot:</b> {{ entry.bot }}
+            </div>
+        {% endfor %}
     </div>
-
-    <script>
-        const chatForm = document.getElementById('chatForm');
-        const chatbox = document.getElementById('chatbox');
-        const typingIndicator = document.getElementById('typingIndicator');
-
-        chatForm.addEventListener('submit', function() {
-            typingIndicator.style.display = 'block';
-        });
-
-        function scrollToBottom() {
-            chatbox.scrollTo({ top: chatbox.scrollHeight, behavior: 'smooth' });
-        }
-
-        // Scroll to bottom on load
-        scrollToBottom();
-    </script>
 </body>
 </html>
 """
@@ -145,6 +116,7 @@ def chat():
     if request.method == "POST":
         user_message = request.form["message"]
 
+        # Build conversation context
         messages = [
             {"role": "system", "content": "You are ChatGPT, a helpful, concise, and creative assistant."}
         ]
@@ -167,9 +139,9 @@ def chat():
 
 @app.route("/clear", methods=["POST"])
 def clear():
-    chat_history.clear()
-    return redirect(url_for("chat"))
+    global chat_history
+    chat_history = []
+    return ("", 204)  # No Content for smooth JS reload
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5001, debug=True)
-
